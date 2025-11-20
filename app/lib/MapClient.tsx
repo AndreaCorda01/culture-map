@@ -4,6 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import styles from "./MapClient.module.css";
 import { supabase } from "./supabase";
 
 /** neon yellow-green pin */
@@ -31,6 +32,8 @@ type Entry = {
   lat?: number | null;
   lon?: number | null;
 };
+
+type EntryWithCoords = Entry & { lat: number; lon: number };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -163,9 +166,9 @@ export default function MapWithClient({
     });
   }, [withCoords, filter, search]);
 
-  const markers = filtered.filter(
+  const markers: EntryWithCoords[] = filtered.filter(
     (e) => Number.isFinite(e.lat as any) && Number.isFinite(e.lon as any)
-  ) as Required<Entry>[];
+  ) as EntryWithCoords[];
 
   // gentle retry: when filtering changes and some entries still lack coords, try again at most every 3s
   useEffect(() => {
@@ -182,36 +185,20 @@ export default function MapWithClient({
   const pinsLoading = (entries.length > 0 && markers.length === 0) || isGeocoding;
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      {/* overlay spinner while pins load */}
+    <div className={styles.mapContainer}>
       {pinsLoading && (
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 1200,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.25)", backdropFilter: "blur(1px)"
-        }}>
-          <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-            background: "#fff", color: "#000", border: "2px solid #000",
-            padding: "12px 16px", borderRadius: 12,
-            fontFamily: "Space Mono, monospace", textTransform: "uppercase", fontWeight: 800
-          }}>
-            <div style={{
-              width: 22, height: 22, borderRadius: "50%",
-              border: "3px solid #000", borderTopColor: "transparent",
-              animation: "spin 0.9s linear infinite"
-            }} />
+        <div className={styles.loadingOverlay}>
+          <div className={styles.loadingCard}>
+            <div className={styles.spinner} />
             <div>Loading pins…</div>
           </div>
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       )}
 
-      {/* Map fixed to its container; page doesn't scroll */}
       <MapContainer
         center={[20, 0]}
         zoom={2}
-        style={{ height: "100%", width: "100%", background: "#000", position: "absolute", inset: 0 }}
+        className={styles.leafletRoot}
         scrollWheelZoom={!pinsLoading}
         dragging={!pinsLoading}
         doubleClickZoom={!pinsLoading}
@@ -231,30 +218,18 @@ export default function MapWithClient({
         {markers.map((e) => (
           <Marker key={e.id} position={[e.lat, e.lon]} icon={neonIcon}>
             <Popup>
-              <div
-                style={{
-                  width: 240,
-                  color: "#000",
-                  fontSize: 12,
-                  textAlign: "left",
-                  fontFamily: "Space Mono, monospace",
-                  textTransform: "uppercase",
-                  background: "#fff",
-                  borderRadius: 8,
-                  padding: 8,
-                }}
-              >
-                <strong style={{ fontSize: 14 }}>{e.title}</strong>
-                <div style={{ margin: "4px 0" }}>
+              <div className={styles.popup}>
+                <strong className={styles.popupTitle}>{e.title}</strong>
+                <div className={styles.popupDescription}>
                   {(() => {
                     const text = e.description || "";
                     return text.length > 100 ? `${text.slice(0, 100)}…` : text;
                   })()}
                 </div>
                 {e.community && (
-                  <div style={{ color: "#444", fontStyle: "italic" }}>{e.community}</div>
+                  <div className={styles.popupCommunity}>{e.community}</div>
                 )}
-                <div style={{ color: "#333", marginTop: 4 }}>
+                <div className={styles.popupLocation}>
                   {(e.city ? e.city + ", " : "")}{e.country} {e.zipcode}
                 </div>
 
@@ -262,22 +237,14 @@ export default function MapWithClient({
                   <img
                     src={e.photo_url}
                     alt={e.title}
-                    style={{ width: "100%", marginTop: 8, borderRadius: 8, border: "2px solid #000" }}
+                    className={styles.popupImage}
                   />
                 )}
 
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <div className={styles.popupActions}>
                   <a
                     href={`/entry/${e.id}`}
-                    style={{
-                      border: "2px solid #000",
-                      background: "#000",
-                      color: "#fff",
-                      padding: "6px 10px",
-                      borderRadius: 9999,
-                      fontWeight: 800,
-                      textDecoration: "none",
-                    }}
+                    className={styles.popupButton}
                   >
                     MORE →
                   </a>
@@ -286,15 +253,7 @@ export default function MapWithClient({
                       href={e.link}
                       target="_blank"
                       rel="noreferrer"
-                      style={{
-                        border: "2px solid #000",
-                        background: "#000",
-                        color: "#fff",
-                        padding: "6px 10px",
-                        borderRadius: 9999,
-                        fontWeight: 800,
-                        textDecoration: "none",
-                      }}
+                      className={styles.popupButton}
                     >
                       LINK ↗
                     </a>

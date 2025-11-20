@@ -1,0 +1,112 @@
+.mapContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.loadingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(1px);
+}
+
+.loadingCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  color: #000;
+  border: 2px solid #000;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-family: "Space Mono", monospace;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid #000;
+  border-top-color: transparent;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.leafletRoot {
+  height: 100%;
+  width: 100%;
+  background: #000;
+  position: absolute;
+  inset: 0;
+}
+
+.popup {
+  width: 240px;
+  color: #000;
+  font-size: 12px;
+  text-align: left;
+  font-family: "Space Mono", monospace;
+  text-transform: uppercase;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.popupTitle {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.popupDescription {
+  margin: 4px 0;
+}
+
+.popupCommunity {
+  color: #444;
+  font-style: italic;
+}
+
+.popupLocation {
+  color: #333;
+  margin-top: 4px;
+}
+
+.popupImage {
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 2px solid #000;
+}
+
+.popupActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.popupButton {
+  border: 2px solid #000;
+  background: #000;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+

@@ -1,10 +1,11 @@
 "use client";
+import "leaflet/dist/leaflet.css";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "./lib/supabase";
-import Footer from "./components/Footer";
-import "leaflet/dist/leaflet.css";
 import CookieConsentModal from "./components/CookieConsentModal";
+import Footer from "./components/Footer";
+import styles from "./home.module.css";
+import { supabase } from "./lib/supabase";
 
 const MapWithClient = dynamic(() => import("./lib/MapClient"), { ssr: false });
 
@@ -58,6 +59,15 @@ export default function Home() {
     });
   }, [entries, search]);
 
+  const mapEntries = useMemo(() => {
+    return (entries || []).map((e) => ({
+      ...e,
+      description: e.description || "",
+      country: e.country || "",
+      zipcode: e.zipcode || "",
+    }));
+  }, [entries]);
+
   async function handleSubmit() {
     if (!form.title || !form.description || !form.country || !form.city || !form.zipcode) {
       alert("Please fill in all required fields"); return;
@@ -106,148 +116,69 @@ export default function Home() {
     }
   }
 
-  const Pill = (props: any) => (
-    <button {...props}
-      style={{
-        border: "2px solid #000", background: "#fff", color: "#000",
-        padding: "12px 18px", borderRadius: 9999, fontWeight: 800,
-        textTransform: "uppercase", cursor: "pointer", letterSpacing: 1
-      }}
-    />
+  const Pill = ({ className = "", ...props }: any) => (
+    <button {...props} className={`${styles.pill} ${className}`.trim()} />
   );
 
   const Card = ({ e }: { e: Entry }) => (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "80px 1fr auto",
-      gap: 14,
-      alignItems: "center",
-      border: "2px solid #000",
-      background: "#fff",
-      color: "#000",
-      borderRadius: 16,
-      padding: 14,
-      boxShadow: "0 4px 0 #000"
-    }}>
-      <div style={{
-        width: 80, height: 64, border: "2px solid #000", borderRadius: 12,
-        overflow: "hidden", background: "#eee"
-      }}>
+    <div className={styles.card}>
+      <div className={styles.cardImage}>
         {e.photo_url ? (
-          <img src={e.photo_url} alt={e.title}
-               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}/>
+          <img src={e.photo_url} alt={e.title}/>
         ) : null}
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {e.title}
-        </div>
-        <div style={{ fontSize: 12, color: "#333", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      <div className={styles.cardBody}>
+        <div className={styles.cardTitle}>{e.title}</div>
+        <div className={styles.cardMeta}>
           {(e.type || "artist")} • {(e.community || "").toUpperCase()}
         </div>
-        <div style={{ fontSize: 11, color: "#444" }}>
+        <div className={styles.cardLocation}>
           {(e.city ? e.city + ", " : "")}{e.country} {e.zipcode}
         </div>
       </div>
-      <a href={`/entry/${e.id}`}
-         style={{
-           border: "2px solid #000", padding: "10px 14px", borderRadius: 9999,
-           textDecoration: "none", color: "#000", fontWeight: 800, whiteSpace: "nowrap", letterSpacing: 1
-         }}>
+      <a href={`/entry/${e.id}`} className={styles.cardLink}>
         OPEN ↗
       </a>
     </div>
   );
 
   return (
-    <div style={{ height: "100dvh", display: "grid", gridTemplateRows: "56px 32px 1fr auto" }}>
+    <div className={styles.layoutShell}>
       <CookieConsentModal/>
       {/* TOP NAV */}
-      <div style={{
-        background: "#fff",
-        color: "#000",
-        borderBottom: "2px solid #000",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 20px",
-        gap: 12
-      }}>
-        <a href="/" style={{
-          fontFamily: "Space Mono, monospace",
-          fontSize: 24,
-          letterSpacing: 2,
-          textTransform: "uppercase",
-          textDecoration: "none",
-          color: "#000"
-        }}>
+      <div className={styles.topNav}>
+        <a href="/" className={styles.logoLink}>
           Culture Explorer
         </a>
 
-        <a
-          href="https://linktr.ee/countercult"
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            border: "2px solid #000",
-            background: "#fff",
-            color: "#000",
-            padding: "8px 14px",
-            borderRadius: 9999,
-            fontWeight: 800,
-            textDecoration: "none",
-            fontSize: 12,
-            textTransform: "uppercase",
-            whiteSpace: "nowrap"
-          }}
-        >
+        <a href="https://linktr.ee/countercult" target="_blank" rel="noreferrer" className={styles.ctaLink}>
           Countercult Creatives ↗
         </a>
       </div>
 
       {/* Marquee */}
-      <div style={{
-        background: "#D7FF3A", color: "#000", borderBottom: "2px solid #000",
-        fontFamily: "Space Mono, monospace", fontStyle: "italic", fontSize: 12, overflow: "hidden", whiteSpace: "nowrap"
-      }}>
-        <div style={{ display: "inline-block", padding: "6px 14px", animation: "marq 30s linear infinite" }}>
+      <div className={styles.marquee}>
+        <div className={styles.marqueeInner}>
           THIS MAP COLLECTS ARTISTS, CULTURAL SPACES, AND ARTIFACTS • ADD ENTRIES USING THE SUBMIT FORM • KEYWORDS HELP DISCOVERY •
         </div>
-        <style>{`@keyframes marq { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
       </div>
 
       {/* Main */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "480px 1fr",
-        height: "100%",
-        minHeight: 0
-      }}>
-        {/* LEFT (white, scrollable) */}
-        <div style={{
-          background: "#fff",
-          color: "#000",
-          padding: 32,
-          borderRight: "2px solid #000",
-          height: "100%",
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-          minHeight: 0
-        }}>
-          {/* SEARCH */}
-          <div style={{ marginBottom: 48 }}>
-            <div style={{
-              fontFamily: "Space Mono, monospace",
-              textTransform: "uppercase",
-              marginBottom: 16,
-              fontWeight: 900,
-              fontSize: 24,
-              letterSpacing: 1
-            }}>
-              Search
-            </div>
+      <div className={styles.layoutMain}>
+        {/* MAP (mobile-first placement) */}
+        <div className={`${styles.col} ${styles.colMapMobile}`}>
+          <div className={styles.mapWrapperMobile}>
+            <MapWithClient entries={mapEntries} filter={""} search={search}/>
+          </div>
+        </div>
 
-            <div style={{ display: "flex", gap: 14, marginBottom: 18 }}>
+        {/* LEFT (white, scrollable) */}
+        <div className={`${styles.col} ${styles.colLeft}`}>
+          {/* SEARCH */}
+          <div className={styles.searchSection}>
+            <div className={styles.sectionTitle}>Search</div>
+
+            <div className={styles.pillGroup}>
               <Pill onClick={() => setSearch("artist")}>Artist</Pill>
               <Pill onClick={() => setSearch("space")}>Space</Pill>
               <Pill onClick={() => setSearch("artifact")}>Artifact</Pill>
@@ -261,144 +192,93 @@ export default function Home() {
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
-              style={{
-                border: "2px solid #000",
-                padding: "16px 18px",
-                borderRadius: 14,
-                width: "100%",
-                background: "#000",
-                color: "#fff",
-                fontFamily: "Space Mono, monospace",
-                letterSpacing: 1
-              }}
+              className={styles.searchInput}
             />
           </div>
 
-          <div style={{ height: 1, background: "#000", opacity: 0.10, margin: "24px 0" }} />
+          <div className={styles.divider} />
 
           {/* SUBMIT */}
-          <div style={{ marginBottom: 56 }}>
-            <div style={{
-              fontFamily: "Space Mono, monospace",
-              textTransform: "uppercase",
-              marginBottom: 16,
-              fontWeight: 900,
-              fontSize: 24,
-              letterSpacing: 1
-            }}>
-              Submit
-            </div>
+          <div className={styles.submitSection}>
+            <div className={styles.sectionTitle}>Submit</div>
 
-            <button
-              onClick={()=>setFormOpen(v=>!v)}
-              style={{ border:"2px solid #000", background:"#fff", color:"#000", padding:"14px 16px",
-                       borderRadius:9999, fontWeight:800, textTransform:"uppercase", width:"100%", textAlign:"left" }}
-            >
+            <button onClick={()=>setFormOpen(v=>!v)} className={styles.toggleFormBtn}>
               {formOpen ? "Close Form" : "Open Form"}
             </button>
 
             {formOpen && (
-              <div style={{ background: "#fff", color:"#000", border:"2px solid #000", borderRadius:14, padding:16, marginTop:16 }}>
+              <div className={styles.formContainer}>
                 <select
                   value={form.type}
                   onChange={(e)=>setForm({...form,type:e.target.value})}
-                  style={{ border:"2px solid #000", padding:"12px 14px", borderRadius:12, width:"100%", marginBottom:14,
-                           textTransform:"uppercase", fontFamily:"Space Mono, monospace" }}
+                  className={styles.select}
                 >
                   <option value="artist">Artist</option>
                   <option value="space">Cultural Space</option>
                   <option value="artifact">Artifact</option>
                 </select>
 
-                <input placeholder="Title *" value={form.title}
-                  onChange={(e:any)=>setForm({...form,title:e.target.value})}
-                  style={{ border:"2px solid #000", padding:"14px 16px", borderRadius:12, width:"100%", marginBottom:14,
-                           textTransform:"uppercase", fontFamily:"Space Mono, monospace" }}
-                />
+                <input className={styles.input} placeholder="Title *" value={form.title}
+                  onChange={(e:any)=>setForm({...form,title:e.target.value})}/>
 
-                <textarea placeholder="Description *" value={form.description}
-                  onChange={(e:any)=>setForm({...form,description:e.target.value})}
-                  style={{ border:"2px solid #000", padding:"14px 16px", borderRadius:12, width:"100%", height:110,
-                           marginBottom:14, textTransform:"uppercase", fontFamily:"Space Mono, monospace" }}
-                />
+                <textarea className={styles.textarea} placeholder="Description *" value={form.description}
+                  onChange={(e:any)=>setForm({...form,description:e.target.value})}/>
 
-                <input placeholder="Country *" value={form.country}
-                  onChange={(e:any)=>setForm({...form,country:e.target.value})}
-                  style={{ border:"2px solid #000", padding:"14px 16px", borderRadius:12, width:"100%", marginBottom:14,
-                           textTransform:"uppercase", fontFamily:"Space Mono, monospace" }}
-                />
+                <input className={styles.input} placeholder="Country *" value={form.country}
+                  onChange={(e:any)=>setForm({...form,country:e.target.value})}/>
 
-                <input placeholder="City / Town *" value={form.city}
-                  onChange={(e:any)=>setForm({...form,city:e.target.value})}
-                  style={{ border:"2px solid #000", padding:"14px 16px", borderRadius:12, width:"100%", marginBottom:14,
-                           textTransform:"uppercase", fontFamily:"Space Mono, monospace" }}
-                />
+                <input className={styles.input} placeholder="City / Town *" value={form.city}
+                  onChange={(e:any)=>setForm({...form,city:e.target.value})}/>
 
-                <input placeholder="ZIP Code *" value={form.zipcode}
-                  onChange={(e:any)=>setForm({...form,zipcode:e.target.value})}
-                  style={{ border:"2px solid #000", padding:"14px 16px", borderRadius:12, width:"100%", marginBottom:14,
-                           textTransform:"uppercase", fontFamily:"Space Mono, monospace" }}
-                />
+                <input className={styles.input} placeholder="ZIP Code *" value={form.zipcode}
+                  onChange={(e:any)=>setForm({...form,zipcode:e.target.value})}/>
 
-                <input placeholder="Community / Subculture (optional)" value={form.community}
-                  onChange={(e:any)=>setForm({...form,community:e.target.value})}
-                  style={{ border:"2px solid #000", padding:"14px 16px", borderRadius:12, width:"100%", marginBottom:14,
-                           textTransform:"uppercase", fontFamily:"Space Mono, monospace" }}
-                />
+                <input className={styles.input} placeholder="Community / Subculture (optional)" value={form.community}
+                  onChange={(e:any)=>setForm({...form,community:e.target.value})}/>
 
-                <input type="file" accept="image/*"
-                  onChange={(e:any)=>setForm({...form,photo:e.target.files?.[0]||null})}
-                  style={{ marginBottom:14 }} />
+                <input className={styles.fileInput} type="file" accept="image/*"
+                  onChange={(e:any)=>setForm({...form,photo:e.target.files?.[0]||null})}/>
 
-                <input placeholder="Optional link" value={form.link}
-                  onChange={(e:any)=>setForm({...form,link:e.target.value})}
-                  style={{ border:"2px solid #000", padding:"14px 16px", borderRadius:12, width:"100%", marginBottom:14,
-                           textTransform:"uppercase", fontFamily:"Space Mono, monospace" }}
-                />
+                <input className={styles.input} placeholder="Optional link" value={form.link}
+                  onChange={(e:any)=>setForm({...form,link:e.target.value})}/>
 
-                <label style={{ display:"flex", gap:8, alignItems:"center", fontFamily:"Space Mono, monospace",
-                                textTransform:"uppercase", marginBottom:12 }}>
+                <label className={styles.checkboxLabel}>
                   <input type="checkbox" checked={form.consent_store}
                          onChange={(e)=>setForm({...form,consent_store:e.target.checked})}/>
                   Allow us to store this data
                 </label>
-                <label style={{ display:"flex", gap:8, alignItems:"center", fontFamily:"Space Mono, monospace",
-                                textTransform:"uppercase", marginBottom:16 }}>
+                <label className={styles.checkboxLabel}>
                   <input type="checkbox" checked={form.consent_share}
                          onChange={(e)=>setForm({...form,consent_share:e.target.checked})}/>
                   Allow us to share this data
                 </label>
 
-                <button onClick={handleSubmit} disabled={loading}
-                  style={{ border:"2px solid #000", background:"#D7FF3A", padding:"14px 18px", borderRadius:9999,
-                           fontWeight:800, textTransform:"uppercase", cursor:"pointer" }}>
+                <button onClick={handleSubmit} disabled={loading} className={styles.submitButton}>
                   {loading ? "Submitting..." : "Submit"}
                 </button>
               </div>
             )}
           </div>
 
-          <div style={{ height: 1, background: "#000", opacity: 0.10, margin: "24px 0" }} />
+          <div className={styles.divider} />
 
           {/* DATABASE */}
-          <div style={{ fontFamily: "Space Mono, monospace", textTransform: "uppercase", marginBottom: 16 }}>
-            Database
-          </div>
+          <div className={styles.databaseTitle}>Database</div>
 
-          <div style={{ display: "grid", gap: 14 }}>
+          <div className={styles.cardGrid}>
             {filtered.slice(0, 8).map((e) => <Card key={e.id} e={e} />)}
             {filtered.length === 0 && (
-              <div style={{ color: "#555", fontSize: 12, fontFamily: "Space Mono, monospace" }}>
+              <div className={styles.emptyState}>
                 No results yet — try a different keyword or add a submission.
               </div>
             )}
           </div>
         </div>
 
-        {/* RIGHT MAP */}
-        <div style={{ position:"relative", minHeight: 0 }}>
-          <div style={{ position:"absolute", inset:0 }}>
-            <MapWithClient entries={entries} filter={""} search={search}/>
+        {/* RIGHT MAP (desktop/tablet) */}
+        <div className={`${styles.col} ${styles.colRight}`}>
+          <div className={styles.mapWrapperDesktop}>
+            <MapWithClient entries={mapEntries} filter={""} search={search}/>
           </div>
         </div>
       </div>
