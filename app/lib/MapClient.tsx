@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { supabase } from "./supabase";
 
 /** neon yellow-green pin */
@@ -47,6 +47,7 @@ export default function MapWithClient({
   const cacheRef = useRef<Map<string, { lat: number; lon: number }>>(new Map());
   const workingRef = useRef(false);
   const lastRetryRef = useRef<number>(0);
+  const lastMissingKeyRef = useRef<string>("");
   const [isGeocoding, setIsGeocoding] = useState(false);
 
   // mirror entries for local augmentation
@@ -65,52 +66,89 @@ export default function MapWithClient({
   // geocode ONLY when entries list changes (initial and after new submissions)
   useEffect(() => {
     if (workingRef.current) return;
-    const missing = (entries || []).filter((e) => !Number.isFinite(e.lat as any) || !Number.isFinite(e.lon as any));
-    if (missing.length === 0) return;
 
-    workingRef.current = true;
-    setIsGeocoding(true);
+    // Process every entry to ensure lat/lon is in supabase--if not, calculate it and update db
+    const fetchCoords = async () => {
+      workingRef.current = true;
+      setIsGeocoding(true);
 
-    (async () => {
       try {
+        // refresh entries that have no valid lat/lon
+        const missing = (entries || []).filter(
+          (e) => !Number.isFinite(e.lat as any) || !Number.isFinite(e.lon as any)
+        );
+
+        if (missing.length === 0) {
+          lastMissingKeyRef.current = "";
+          setWithCoords(entries);
+          return;
+        }
+
+        // Prepare to update any with new coords from OSM
+        let didSomething = false;
+        const pendingUpdates: { id: number; lat: number; lon: number }[] = [];
+
+        // Copy of entries to mutate before pushing into React state
+        let newEntries = [...entries];
+
         for (const e of missing) {
+          // If supabase already has coords, that's all we need (shouldn't appear in `missing`)
+          if (Number.isFinite(e.lat) && Number.isFinite(e.lon)) continue;
+
           const key = buildKey(e);
           if (!key) continue;
 
-          let hit = cacheRef.current.get(key);
+          //await sleep(1000); // be nice to Nominatim
 
-          if (!hit) {
-            await sleep(1000); // be polite to Nominatim
-            const q = encodeURIComponent(key);
-            try {
-              const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}`;
-              const res = await fetch(url, { headers: { Accept: "application/json" } });
-              if (res.ok) {
-                const data = (await res.json()) as Array<{ lat: string; lon: string }>;
-                if (data?.length) {
-                  const lat = parseFloat(data[0].lat);
-                  const lon = parseFloat(data[0].lon);
-                  if (Number.isFinite(lat) && Number.isFinite(lon)) {
-                    hit = { lat, lon };
-                    cacheRef.current.set(key, hit);
+          try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
+              key
+            )}`;
+            const res = await fetch(url, { headers: { Accept: "application/json" } });
+            if (res.ok) {
+              const data = (await res.json()) as Array<{ lat: string; lon: string }>;
+              if (data?.length) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+                if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                  // Update the local list for immediate UX
+                  newEntries = newEntries.map((x) =>
+                    x.id === e.id ? { ...x, lat, lon } : x
+                  );
+                  // Prepare to persist to supabase in batch
+                  const result = await supabase.from("entries").update({ lat, lon }).eq("id", e.id);
+                  console.log("RESULT", result);
+                  if (result.error) {
+                    console.error("ERROR UPDATING", result.error);
+                  } else {
+                    console.log("UPDATED", result.data);
                   }
                 }
               }
-            } catch { /* ignore */ }
-          }
-
-          if (hit) {
-            // update UI
-            setWithCoords((prev) => prev.map((x) => (x.id === e.id ? { ...x, lat: hit!.lat, lon: hit!.lon } : x)));
-            // persist best-effort
-            try { await supabase.from("entries").update({ lat: hit.lat, lon: hit.lon }).eq("id", e.id); } catch {}
+            }
+          } catch {
+            // ignore errors and try next
           }
         }
+
+        // Push new coords into supabase in batch
+        if (pendingUpdates.length > 0) {
+          try {
+            console.log("UPDATING", pendingUpdates);
+            await supabase.from("entries").upsert(pendingUpdates, { onConflict: "id" });
+          } catch {
+            // ignore best-effort persistence errors
+          }
+        }
+
+        setWithCoords(newEntries);
       } finally {
         workingRef.current = false;
         setIsGeocoding(false);
       }
-    })();
+    };
+
+    fetchCoords();
   }, [entries]);
 
   // lightweight filter for display (runs on keystrokes but no network)
@@ -207,7 +245,12 @@ export default function MapWithClient({
                 }}
               >
                 <strong style={{ fontSize: 14 }}>{e.title}</strong>
-                <div style={{ margin: "4px 0" }}>{e.description}</div>
+                <div style={{ margin: "4px 0" }}>
+                  {(() => {
+                    const text = e.description || "";
+                    return text.length > 100 ? `${text.slice(0, 100)}…` : text;
+                  })()}
+                </div>
                 {e.community && (
                   <div style={{ color: "#444", fontStyle: "italic" }}>{e.community}</div>
                 )}

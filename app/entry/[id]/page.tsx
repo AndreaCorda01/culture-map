@@ -1,8 +1,8 @@
 // @ts-nocheck
 "use client";
 
-import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
+import { useEffect, useState } from "react";
 
 function RelCard({ e }: { e: any }) {
   return (
@@ -71,39 +71,32 @@ export default function EntryDetails({ params }: { params: { id: string } }) {
       if (error) { setErr(error.message); return; }
       setRow(data);
 
-      // Related: prefer same community, else same country, else recent
+      // Related: fetch once, then prioritize locally by community, country, recency
       try {
-        let rel: any[] = [];
-        if (data?.community) {
-          const { data: d1 } = await supabase
-            .from("entries")
-            .select("id,title,photo_url,community,country,zipcode,type")
-            .eq("community", data.community)
-            .neq("id", id)
-            .limit(8);
-          rel = d1 || [];
-        }
-        if ((!rel || rel.length < 4) && data?.country) {
-          const { data: d2 } = await supabase
-            .from("entries")
-            .select("id,title,photo_url,community,country,zipcode,type")
-            .eq("country", data.country)
-            .neq("id", id)
-            .limit(8);
-          const seen = new Set(rel.map((r) => r.id));
-          (d2 || []).forEach((r) => { if (!seen.has(r.id)) rel.push(r); });
-        }
-        if (rel.length < 4) {
-          const { data: d3 } = await supabase
-            .from("entries")
-            .select("id,title,photo_url,community,country,zipcode,type")
-            .order("id", { ascending: false })
-            .neq("id", id)
-            .limit(8);
-          const seen = new Set(rel.map((r) => r.id));
-          (d3 || []).forEach((r) => { if (!seen.has(r.id)) rel.push(r); });
-        }
-        setRelated(rel.slice(0, 8));
+        const { data: relRaw } = await supabase
+          .from("entries")
+          .select("id,title,photo_url,community,country,zipcode,type")
+          .neq("id", id)
+          .order("id", { ascending: false })
+          .limit(64);
+
+        const community = (data?.community || "").trim().toLowerCase();
+        const country = (data?.country || "").trim().toLowerCase();
+
+        const scored = (relRaw || []).map((item) => {
+          const score =
+            (community && item.community && item.community.trim().toLowerCase() === community ? 2 : 0) +
+            (country && item.country && item.country.trim().toLowerCase() === country ? 1 : 0);
+          return { ...item, _score: score };
+        });
+
+        scored.sort((a, b) => {
+          if (b._score !== a._score) return b._score - a._score;
+          return b.id - a.id;
+        });
+
+        const topEight = scored.slice(0, 8).map(({ _score, ...rest }) => rest);
+        setRelated(topEight);
       } catch (e: any) {
         console.warn("related fetch error", e?.message || e);
       }
